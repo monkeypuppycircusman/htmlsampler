@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHOP — Sample Chopper</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&display=swap');
+:root {
+  --bg0:#0a0a0c;--bg1:#111114;--bg2:#18181d;--bg3:#222228;--bg4:#2a2a35;--bg5:#333340;
+  --border:#2e2e3a;--border2:#3d3d50;--border3:#505068;
+  --accent:#39ff8a;--accent2:#00d4ff;--accent3:#ff6b35;--accent4:#c084fc;--accent5:#ffd700;
+  --text:#d4d4e0;--text2:#7a7a90;--text3:#4a4a5a;--text4:#2e2e3a;
+  --red:#ff4444;--mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg0);color:var(--text);font-family:var(--sans);font-size:12px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;}
+#plugin{width:960px;background:var(--bg0);border:1px solid var(--border2);border-radius:10px;box-shadow:0 24px 80px rgba(0,0,0,.8),0 0 0 1px rgba(57,255,138,.04);overflow:hidden;display:flex;flex-direction:column;}
+
+/* HEADER */
+#hdr{background:var(--bg1);border-bottom:1px solid var(--border);height:44px;display:flex;align-items:center;padding:0 16px;gap:14px;flex-shrink:0;}
+#logo{font-family:var(--mono);font-size:17px;letter-spacing:5px;color:var(--accent);}
+#logo-sub{font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;}
+.sep{width:1px;height:22px;background:var(--border);}
+.hbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:3px;cursor:pointer;font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
+.hbtn:hover{color:var(--text);border-color:var(--border2);}
+.hbtn.active{color:var(--accent);border-color:var(--accent);background:rgba(57,255,138,.08);}
+#import-btn{position:relative;overflow:hidden;}
+#import-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0;}
+#file-name{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#bpm-val{font-family:var(--mono);font-size:14px;color:var(--accent2);background:var(--bg0);border:1px solid var(--border);border-radius:3px;padding:2px 8px;min-width:52px;text-align:center;}
+
+/* WAVEFORM */
+#wave-section{background:var(--bg1);border-bottom:1px solid var(--border);padding:10px 14px;flex-shrink:0;}
+#wave-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.wtool{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:3px 9px;border-radius:3px;cursor:pointer;font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
+.wtool:hover{color:var(--text);border-color:var(--border2);}
+.wtool.active{color:var(--accent);border-color:var(--accent);}
+#wave-wrap{position:relative;height:96px;background:var(--bg0);border:1px solid var(--border);border-radius:4px;overflow:hidden;cursor:crosshair;}
+#wave-canvas{display:block;position:absolute;top:0;left:0;}
+#slice-canvas{display:block;position:absolute;top:0;left:0;pointer-events:none;}
+#playhead-line{position:absolute;top:0;bottom:0;width:1px;background:var(--accent2);pointer-events:none;display:none;opacity:.8;}
+#zoom-bar{height:18px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;position:relative;overflow:hidden;cursor:ew-resize;margin-top:4px;}
+#zoom-handle{position:absolute;top:1px;bottom:1px;background:var(--border2);border-radius:2px;min-width:20px;}
+
+/* MAIN ROW */
+#main-row{display:flex;flex:1;overflow:hidden;}
+
+/* PAD GRID */
+#pad-section{width:320px;flex-shrink:0;border-right:1px solid var(--border);background:var(--bg1);display:flex;flex-direction:column;}
+#pad-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);}
+#pad-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:10px;}
+.pad{position:relative;border-radius:5px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:all .08s;overflow:hidden;user-select:none;}
+.pad:hover{border-color:var(--border2);background:var(--bg3);}
+.pad.active-pad{border-color:var(--accent);background:rgba(57,255,138,.08);}
+.pad.playing{background:var(--accent) !important;border-color:var(--accent) !important;}
+.pad.playing .pad-num{color:#000 !important;}
+.pad.playing .pad-key{color:#000 !important;}
+.pad.empty{opacity:.35;}
+.pad-num{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;}
+.pad-key{font-family:var(--mono);font-size:8px;color:var(--text4);}
+.pad-mini-wave{position:absolute;bottom:0;left:0;right:0;height:24px;opacity:.5;}
+.pad-flags{position:absolute;top:3px;right:3px;display:flex;gap:2px;}
+.pad-flag{font-size:7px;background:var(--bg4);border-radius:2px;padding:1px 3px;font-family:var(--mono);color:var(--text3);}
+.pad-flag.on{color:var(--accent3);}
+
+/* RIGHT PANEL */
+#right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* SLICE EDITOR */
+#slice-editor{padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg1);}
+#slice-editor h4{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:10px;}
+#slice-params{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;}
+
+/* Knob */
+.kg{display:flex;flex-direction:column;align-items:center;gap:3px;}
+canvas.knob{display:block;cursor:ns-resize;}
+.kl{font-family:var(--mono);font-size:7px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);text-align:center;}
+.kv{font-family:var(--mono);font-size:8px;color:var(--text2);text-align:center;min-width:32px;}
+
+/* Toggle row */
+.toggle-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.tog{background:var(--bg3);border:1px solid var(--border);color:var(--text3);padding:3px 8px;border-radius:3px;cursor:pointer;font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;transition:all .1s;}
+.tog:hover{color:var(--text2);border-color:var(--border2);}
+.tog.on{color:var(--accent3);border-color:var(--accent3);background:rgba(255,107,53,.1);}
+
+/* Pitch display */
+.pitch-display{font-family:var(--mono);font-size:11px;color:var(--accent5);background:var(--bg0);border:1px solid var(--border);border-radius:3px;padding:3px 8px;text-align:center;min-width:44px;}
+
+/* SEQUENCER */
+#seq-section{flex:1;overflow:hidden;display:flex;flex-direction:column;background:var(--bg0);}
+#seq-toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;}
+#seq-scroll{flex:1;overflow-y:auto;padding:8px 14px;}
+.seq-row{display:flex;align-items:center;gap:4px;margin-bottom:4px;height:30px;}
+.seq-pad-lbl{width:28px;font-family:var(--mono);font-size:8px;color:var(--text2);text-align:right;flex-shrink:0;}
+.seq-step{width:24px;height:24px;border-radius:3px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;flex-shrink:0;transition:all .05s;position:relative;}
+.seq-step:hover{border-color:var(--border2);}
+.seq-step.on{border-color:var(--accent);box-shadow:0 0 5px rgba(57,255,138,.25);}
+.seq-step.beat0{border-left:2px solid var(--border2);}
+.seq-step.playing{background:var(--accent) !important;}
+.seq-step-bar{position:absolute;bottom:0;left:0;right:0;border-radius:0 0 2px 2px;background:var(--accent);opacity:.7;}
+
+/* STATUS */
+#statusbar{height:22px;background:var(--bg1);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:16px;flex-shrink:0;}
+.stat{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:1px;}
+.stat span{color:var(--text2);}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg0);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+<div id="plugin">
+
+<!-- HEADER -->
+<div id="hdr">
+  <div>
+    <div id="logo">CHOP</div>
+    <div id="logo-sub">Sample Chopper</div>
+  </div>
+  <div class="sep"></div>
+  <div class="hbtn" id="import-btn">
+    ↑ LOAD SAMPLE
+    <input type="file" id="file-input" accept="audio/*">
+  </div>
+  <div id="file-name">no sample loaded</div>
+  <div class="sep"></div>
+  <div class="hbtn active" id="btn-play-seq">▶ SEQ</div>
+  <div class="hbtn" id="btn-stop-seq">■ STOP</div>
+  <div id="bpm-val" title="Drag to change BPM" id="bpm-display">120</div>
+  <div class="sep"></div>
+  <div class="hbtn" id="btn-randomize">⚄ RANDOM</div>
+  <div class="hbtn" id="btn-clear-seq">✕ CLEAR SEQ</div>
+  <div style="margin-left:auto;" class="stat">SPACE = play/stop</div>
+</div>
+
+<!-- WAVEFORM -->
+<div id="wave-section">
+  <div id="wave-toolbar">
+    <div class="wtool active" id="tool-slice">SLICE</div>
+    <div class="wtool" id="tool-move">MOVE</div>
+    <div class="sep"></div>
+    <div class="wtool" id="btn-auto-chop">AUTO CHOP</div>
+    <div class="wtool" id="btn-equal-chop">EQUAL 16</div>
+    <div class="wtool" id="btn-clear-slices">CLEAR</div>
+    <div class="sep"></div>
+    <div class="wtool" id="btn-zoom-in">+ ZOOM</div>
+    <div class="wtool" id="btn-zoom-out">− ZOOM</div>
+    <div class="stat" style="margin-left:auto;" id="slice-count-lbl">0 SLICES</div>
+  </div>
+  <div id="wave-wrap">
+    <canvas id="wave-canvas"></canvas>
+    <canvas id="slice-canvas"></canvas>
+    <div id="playhead-line"></div>
+  </div>
+  <div id="zoom-bar"><div id="zoom-handle"></div></div>
+</div>
+
+<!-- MAIN ROW -->
+<div id="main-row">
+
+  <!-- PADS -->
+  <div id="pad-section">
+    <div id="pad-toolbar">
+      <div class="stat">PADS</div>
+      <div class="sep"></div>
+      <div class="hbtn" id="btn-kb-map">KB MAP</div>
+      <div class="stat" style="margin-left:auto;font-size:8px;">Q–P / A–L</div>
+    </div>
+    <div id="pad-grid"></div>
+  </div>
+
+  <!-- RIGHT -->
+  <div id="right-panel">
+
+    <!-- SLICE EDITOR -->
+    <div id="slice-editor">
+      <h4 id="slice-editor-title">SLICE EDITOR — select a pad</h4>
+      <div id="slice-params">
+        <!-- ADSR -->
+        <div class="kg">
+          <canvas class="knob" id="k-att" width="44" height="44" data-min="0.001" data-max="2" data-val="0.005" data-color="#39ff8a"></canvas>
+          <div class="kl">Attack</div><div class="kv" id="v-att">0.01</div>
+        </div>
+        <div class="kg">
+          <canvas class="knob" id="k-dec" width="44" height="44" data-min="0.01" data-max="2" data-val="0.1" data-color="#39ff8a"></canvas>
+          <div class="kl">Decay</div><div class="kv" id="v-dec">0.10</div>
+        </div>
+        <div class="kg">
+          <canvas class="knob" id="k-sus" width="44" height="44" data-min="0" data-max="1" data-val="1" data-color="#39ff8a"></canvas>
+          <div class="kl">Sustain</div><div class="kv" id="v-sus">1.00</div>
+        </div>
+        <div class="kg">
+          <canvas class="knob" id="k-rel" width="44" height="44" data-min="0.01" data-max="4" data-val="0.1" data-color="#39ff8a"></canvas>
+          <div class="kl">Release</div><div class="kv" id="v-rel">0.10</div>
+        </div>
+        <div class="sep"></div>
+        <!-- Pitch -->
+        <div class="kg">
+          <canvas class="knob" id="k-pitch" width="44" height="44" data-min="-24" data-max="24" data-val="0" data-color="#ffd700"></canvas>
+          <div class="kl">Pitch</div><div class="kv" id="v-pitch">0</div>
+        </div>
+        <div class="kg">
+          <canvas class="knob" id="k-fine" width="44" height="44" data-min="-100" data-max="100" data-val="0" data-color="#ffd700"></canvas>
+          <div class="kl">Fine</div><div class="kv" id="v-fine">0</div>
+        </div>
+        <div class="kg">
+          <canvas class="knob" id="k-gain" width="44" height="44" data-min="0" data-max="2" data-val="1" data-color="#00d4ff"></canvas>
+          <div class="kl">Gain</div><div class="kv" id="v-gain">1.00</div>
+        </div>
+        <div class="sep"></div>
+        <!-- Toggles -->
+        <div style="display:flex;flex-direction:column;gap:6px;justify-content:center;">
+          <div class="toggle-row">
+            <div class="tog" id="tog-loop">LOOP</div>
+            <div class="tog on" id="tog-oneshot">ONE SHOT</div>
+            <div class="tog" id="tog-reverse">REVERSE</div>
+          </div>
+          <div class="toggle-row">
+            <div style="font-family:var(--mono);font-size:8px;color:var(--text3);">NOTE:</div>
+            <canvas class="knob" id="k-note" width="44" height="44" data-min="24" data-max="96" data-val="60" data-color="#c084fc"></canvas>
+            <div class="kv" id="v-note">C4</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEQUENCER -->
+    <div id="seq-section">
+      <div id="seq-toolbar">
+        <div class="stat">CHOP SEQUENCER</div>
+        <div class="sep"></div>
+        <div class="hbtn" id="btn-seq-steps-16">16</div>
+        <div class="hbtn active" id="btn-seq-steps-32">32</div>
+        <div class="sep"></div>
+        <div class="stat">SWING</div>
+        <canvas class="knob" id="k-swing" width="32" height="32" data-min="0" data-max="0.3" data-val="0" data-color="#ff6b35"></canvas>
+        <div class="kv" id="v-swing" style="font-size:8px;">0.00</div>
+      </div>
+      <div id="seq-scroll">
+        <div id="seq-rows"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATUS -->
+<div id="statusbar">
+  <div class="stat">CHOP v1.0</div>
+  <div class="stat">SLICES <span id="st-slices">0</span></div>
+  <div class="stat">ACTIVE PAD <span id="st-pad">—</span></div>
+  <div class="stat">STEP <span id="st-step">—</span></div>
+  <div class="stat" style="margin-left:auto;">VOID INSTRUMENTS</div>
+</div>
+
+</div><!-- /plugin -->
+
+<script>
+// ══════════════════════════════════════
+// CHOP — Sample Chopper Engine
+// ══════════════════════════════════════
+
+let actx = null;
+function getCtx() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+
+// ── State ──
+let sampleBuffer = null;       // AudioBuffer
+let samplePCM = null;          // Float32Array (mono mix, normalised)
+let sliceMarkers = [];         // sorted sample positions 0..1
+let activePad = 0;
+let seqSteps = 32;
+let seqPlaying = false;
+let seqStep = 0;
+let seqTimer = null;
+let bpm = 120;
+let swing = 0;
+let zoomStart = 0, zoomEnd = 1; // 0..1 of sample
+let waveW = 0, waveH = 0;
+let dragSliceIdx = -1;
+let movingSlice = false;
+let tool = 'slice';
+let kbMapMode = false;
+
+// Per-pad state (16 pads)
+const NUM_PADS = 16;
+const pads = Array.from({length: NUM_PADS}, (_, i) => ({
+  sliceIdx: i,      // which slice index this pad plays (-1 = none)
+  att: 0.005, dec: 0.1, sus: 1, rel: 0.1,
+  pitch: 0, fine: 0, gain: 1,
+  loop: false, oneshot: true, reverse: false,
+  note: 60 + i,     // MIDI note for KB map
+  seqPattern: new Array(seqSteps).fill(false),
+  color: ['#39ff8a','#00d4ff','#ff6b35','#c084fc','#ffd700','#ff4444','#44ffdd','#ff8844',
+           '#88ff44','#ff4488','#44aaff','#ffaa44','#aa44ff','#44ffaa','#ff6644','#66aaff'][i],
+}));
+
+// ── Keyboard mapping ──
+const KB_TOP  = ['q','w','e','r','t','y','u','p'];
+const KB_BOT  = ['a','s','d','f','g','h','j','l'];
+const KB_ALL  = [...KB_TOP, ...KB_BOT];
+
+// ── Waveform display ──
+const waveCanvas  = document.getElementById('wave-canvas');
+const sliceCanvas = document.getElementById('slice-canvas');
+const waveWrap    = document.getElementById('wave-wrap');
+const wc = waveCanvas.getContext('2d');
+const sc = sliceCanvas.getContext('2d');
+
+function resizeCanvases() {
+  waveW = waveWrap.clientWidth;
+  waveH = waveWrap.clientHeight;
+  waveCanvas.width = waveW; waveCanvas.height = waveH;
+  sliceCanvas.width = waveW; sliceCanvas.height = waveH;
+  drawWaveform(); drawSlices();
+}
+
+function drawWaveform() {
+  wc.clearRect(0, 0, waveW, waveH);
+  wc.fillStyle = '#0a0a0c';
+  wc.fillRect(0, 0, waveW, waveH);
+  if (!samplePCM) {
+    wc.fillStyle = '#2e2e3a';
+    wc.font = '11px Share Tech Mono';
+    wc.textAlign = 'center';
+    wc.fillText('DROP OR LOAD A SAMPLE', waveW/2, waveH/2);
+    return;
+  }
+
+  const totalSamples = samplePCM.length;
+  const startSmp = Math.floor(zoomStart * totalSamples);
+  const endSmp   = Math.floor(zoomEnd   * totalSamples);
+  const viewLen  = endSmp - startSmp;
+
+  // Draw active slice region highlight
+  const slices = getSortedSliceSamplePositions();
+  if (activePad >= 0 && pads[activePad].sliceIdx >= 0) {
+    const si = pads[activePad].sliceIdx;
+    if (si < slices.length) {
+      const sliceStart = slices[si];
+      const sliceEnd   = si + 1 < slices.length ? slices[si+1] : totalSamples;
+      const x1 = smpToX(sliceStart);
+      const x2 = smpToX(sliceEnd);
+      wc.fillStyle = 'rgba(57,255,138,0.06)';
+      wc.fillRect(x1, 0, x2 - x1, waveH);
+    }
+  }
+
+  // Waveform
+  const mid = waveH / 2;
+  const step = viewLen / waveW;
+
+  // RMS peaks per pixel
+  for (let px = 0; px < waveW; px++) {
+    const i0 = Math.floor(startSmp + px * step);
+    const i1 = Math.floor(startSmp + (px + 1) * step);
+    let peak = 0;
+    for (let i = i0; i < i1 && i < totalSamples; i++) {
+      const v = Math.abs(samplePCM[i]);
+      if (v > peak) peak = v;
+    }
+    const h = peak * mid * 0.9;
+    const gradient = wc.createLinearGradient(0, mid - h, 0, mid + h);
+    gradient.addColorStop(0, 'rgba(57,255,138,0.6)');
+    gradient.addColorStop(0.5, 'rgba(57,255,138,0.9)');
+    gradient.addColorStop(1, 'rgba(57,255,138,0.6)');
+    wc.fillStyle = gradient;
+    wc.fillRect(px, mid - h, 1, h * 2);
+  }
+
+  // Centre line
+  wc.fillStyle = 'rgba(57,255,138,0.15)';
+  wc.fillRect(0, mid, waveW, 1);
+}
+
+function drawSlices() {
+  sc.clearRect(0, 0, waveW, waveH);
+  if (!samplePCM) return;
+  const slices = getSortedSliceSamplePositions();
+  slices.forEach((smp, i) => {
+    const x = smpToX(smp);
+    if (x < 0 || x > waveW) return;
+    const isActive = pads[activePad] && pads[activePad].sliceIdx === i;
+    sc.strokeStyle = isActive ? '#39ff8a' : '#ffd70099';
+    sc.lineWidth = isActive ? 2 : 1;
+    sc.setLineDash([4, 3]);
+    sc.beginPath(); sc.moveTo(x, 0); sc.lineTo(x, waveH); sc.stroke();
+    sc.setLineDash([]);
+    // Label
+    sc.fillStyle = isActive ? '#39ff8a' : '#ffd700bb';
+    sc.font = '8px Share Tech Mono';
+    sc.textAlign = 'left';
+    sc.fillText(i + 1, x + 3, 10);
+  });
+  document.getElementById('slice-count-lbl').textContent = slices.length + ' SLICES';
+  document.getElementById('st-slices').textContent = slices.length;
+}
+
+function smpToX(smp) {
+  const total = samplePCM.length;
+  const t = smp / total;
+  return ((t - zoomStart) / (zoomEnd - zoomStart)) * waveW;
+}
+function xToSmp(x) {
+  const t = (x / waveW) * (zoomEnd - zoomStart) + zoomStart;
+  return Math.floor(t * samplePCM.length);
+}
+function xToNorm(x) { return (x / waveW) * (zoomEnd - zoomStart) + zoomStart; }
+
+function getSortedSliceSamplePositions() {
+  return [...sliceMarkers].sort((a, b) => a - b).map(t => Math.floor(t * samplePCM.length));
+}
+
+// ── Waveform interaction ──
+let draggingSliceHandle = -1;
+
+waveCanvas.addEventListener('mousedown', e => {
+  if (!samplePCM) return;
+  const x = e.offsetX;
+  const norm = xToNorm(x);
+
+  if (tool === 'slice') {
+    // Check if near existing slice marker
+    const hit = findNearSlice(norm, 0.004);
+    if (hit >= 0) {
+      draggingSliceHandle = hit;
+    } else {
+      // Add new slice
+      sliceMarkers.push(norm);
+      assignSlicesToPads();
+      drawWaveform(); drawSlices(); buildPads();
+    }
+  } else if (tool === 'move') {
+    draggingSliceHandle = findNearSlice(norm, 0.008);
+  }
+});
+
+waveCanvas.addEventListener('mousemove', e => {
+  if (draggingSliceHandle < 0) return;
+  const norm = xToNorm(e.offsetX);
+  sliceMarkers[draggingSliceHandle] = Math.max(0.001, Math.min(0.999, norm));
+  assignSlicesToPads();
+  drawWaveform(); drawSlices();
+});
+
+waveCanvas.addEventListener('mouseup', () => { draggingSliceHandle = -1; buildPads(); });
+
+waveCanvas.addEventListener('dblclick', e => {
+  if (!samplePCM) return;
+  const norm = xToNorm(e.offsetX);
+  const hit = findNearSlice(norm, 0.008);
+  if (hit >= 0) { sliceMarkers.splice(hit, 1); assignSlicesToPads(); drawWaveform(); drawSlices(); buildPads(); }
+});
+
+// Click to preview
+waveCanvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (!samplePCM) return;
+  const smp = xToSmp(e.offsetX);
+  previewFromSample(smp);
+});
+
+function findNearSlice(norm, thresh) {
+  let best = -1, bestD = thresh;
+  sliceMarkers.forEach((m, i) => {
+    const d = Math.abs(m - norm);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+
+// ── File loading ──
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  loadAudioFile(file);
+});
+
+// Drag-and-drop on whole plugin
+document.getElementById('plugin').addEventListener('dragover', e => e.preventDefault());
+document.getElementById('plugin').addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('audio')) loadAudioFile(file);
+});
+
+function loadAudioFile(file) {
+  document.getElementById('file-name').textContent = file.name.substring(0, 26);
+  const reader = new FileReader();
+  reader.onload = ev => {
+    getCtx().decodeAudioData(ev.target.result.slice(0), buf => {
+      sampleBuffer = buf;
+      // Build mono PCM for waveform
+      const ch0 = buf.getChannelData(0);
+      const ch1 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : ch0;
+      samplePCM = new Float32Array(ch0.length);
+      for (let i = 0; i < ch0.length; i++) samplePCM[i] = (ch0[i] + ch1[i]) / 2;
+      // Reset
+      sliceMarkers = [];
+      zoomStart = 0; zoomEnd = 1;
+      resizeCanvases();
+      drawZoomBar();
+      // Auto-chop on load
+      autoChopTransients();
+    }, () => alert('Could not decode audio file.'));
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Auto-chop: transient detection ──
+function autoChopTransients() {
+  if (!samplePCM) return;
+  const pcm = samplePCM;
+  const sr = sampleBuffer.sampleRate;
+  const hopSize = Math.floor(sr * 0.01); // 10ms hops
+  const windowSize = hopSize * 2;
+  const threshold = 0.15;
+  let prevEnergy = 0;
+  const markers = [];
+  const minGap = Math.floor(sr * 0.08); // min 80ms between hits
+  let lastMarker = -minGap;
+
+  for (let i = 0; i < pcm.length - windowSize; i += hopSize) {
+    let energy = 0;
+    for (let j = 0; j < windowSize; j++) energy += pcm[i+j] ** 2;
+    energy /= windowSize;
+    const flux = Math.max(0, energy - prevEnergy);
+    if (flux > threshold && i - lastMarker > minGap) {
+      if (i > 0) markers.push(i / pcm.length);
+      lastMarker = i;
+    }
+    prevEnergy = energy;
+  }
+
+  sliceMarkers = markers.slice(0, 15); // max 16 slices
+  assignSlicesToPads();
+  drawWaveform(); drawSlices(); buildPads();
+}
+
+// ── Equal 16 chop ──
+function equalChop() {
+  if (!samplePCM) return;
+  sliceMarkers = [];
+  for (let i = 1; i < 16; i++) sliceMarkers.push(i / 16);
+  assignSlicesToPads();
+  drawWaveform(); drawSlices(); buildPads();
+}
+
+// ── Assign slices to pads ──
+function assignSlicesToPads() {
+  const sorted = [...sliceMarkers].sort((a,b)=>a-b);
+  pads.forEach((p, i) => { p.sliceIdx = i < sorted.length ? i : -1; });
+  // Rebuild seq patterns if needed
+  buildSeqRows();
+}
+
+// ── Playback ──
+const activeSources = new Map();
+
+function playPad(padIdx, velocity = 1.0) {
+  if (!sampleBuffer) return;
+  const c = getCtx();
+  const pad = pads[padIdx];
+  if (pad.sliceIdx < 0) return;
+
+  const sorted = getSortedSliceSamplePositions();
+  const sliceStart = sorted[pad.sliceIdx] || 0;
+  const sliceEnd   = pad.sliceIdx + 1 < sorted.length ? sorted[pad.sliceIdx + 1] : sampleBuffer.length;
+  const duration   = (sliceEnd - sliceStart) / sampleBuffer.sampleRate;
+
+  // Stop previous if oneshot
+  if (pad.oneshot && activeSources.has(padIdx)) {
+    try { activeSources.get(padIdx).stop(0); } catch(e) {}
+    activeSources.delete(padIdx);
+  }
+
+  const src = c.createBufferSource();
+  src.buffer = sampleBuffer;
+
+  // Pitch shift via playbackRate
+  const semitones = pad.pitch + pad.fine / 100;
+  src.playbackRate.value = Math.pow(2, semitones / 12);
+  src.loop = pad.loop;
+  if (pad.loop) { src.loopStart = sliceStart / sampleBuffer.sampleRate; src.loopEnd = sliceEnd / sampleBuffer.sampleRate; }
+
+  // Reverse: re-slice into reversed buffer
+  let actualSrc = src;
+  if (pad.reverse && !pad.loop) {
+    const revBuf = c.createBuffer(sampleBuffer.numberOfChannels, sliceEnd - sliceStart, sampleBuffer.sampleRate);
+    for (let ch = 0; ch < sampleBuffer.numberOfChannels; ch++) {
+      const orig = sampleBuffer.getChannelData(ch);
+      const rev  = revBuf.getChannelData(ch);
+      for (let i = 0; i < rev.length; i++) rev[i] = orig[sliceEnd - 1 - i];
+    }
+    const revSrc = c.createBufferSource();
+    revSrc.buffer = revBuf;
+    revSrc.playbackRate.value = src.playbackRate.value;
+    actualSrc = revSrc;
+  }
+
+  // ADSR envelope
+  const env = c.createGain();
+  const gainNode = c.createGain();
+  gainNode.gain.value = pad.gain * velocity;
+  const now = c.currentTime;
+  env.gain.setValueAtTime(0, now);
+  env.gain.linearRampToValueAtTime(1, now + pad.att);
+  env.gain.exponentialRampToValueAtTime(Math.max(0.001, pad.sus), now + pad.att + pad.dec);
+
+  actualSrc.connect(env); env.connect(gainNode); gainNode.connect(c.destination);
+
+  if (pad.reverse) {
+    actualSrc.start(now, 0);
+  } else {
+    actualSrc.start(now, sliceStart / sampleBuffer.sampleRate, pad.loop ? undefined : duration);
+  }
+
+  activeSources.set(padIdx, actualSrc);
+
+  // Flash pad
+  const padEl = document.querySelector(`.pad[data-idx="${padIdx}"]`);
+  if (padEl) {
+    padEl.classList.add('playing');
+    setTimeout(() => padEl.classList.remove('playing'), Math.min(300, duration * 1000 * 0.4));
+  }
+
+  // Release
+  if (!pad.loop) {
+    const releaseAt = now + pad.att + pad.dec + duration * pad.sus - pad.att - pad.dec;
+    env.gain.setValueAtTime(Math.max(0.001, pad.sus), now + Math.max(pad.att + pad.dec, duration - pad.rel));
+    env.gain.exponentialRampToValueAtTime(0.0001, now + duration + pad.rel * 0.5);
+    try { actualSrc.stop(now + duration + pad.rel + 0.1); } catch(e) {}
+  }
+
+  // Show playhead on waveform
+  showPlayhead(padIdx, sliceStart, sliceEnd);
+}
+
+function stopPad(padIdx) {
+  if (activeSources.has(padIdx)) {
+    try { activeSources.get(padIdx).stop(0); } catch(e) {}
+    activeSources.delete(padIdx);
+  }
+}
+
+function previewFromSample(startSmp) {
+  if (!sampleBuffer) return;
+  const c = getCtx();
+  const src = c.createBufferSource();
+  src.buffer = sampleBuffer;
+  src.connect(c.destination);
+  src.start(0, startSmp / sampleBuffer.sampleRate, 1);
+}
+
+// Playhead animation
+let playheadAnim = null;
+function showPlayhead(padIdx, startSmp, endSmp) {
+  const el = document.getElementById('playhead-line');
+  el.style.display = 'block';
+  if (playheadAnim) cancelAnimationFrame(playheadAnim);
+  const startTime = getCtx().currentTime;
+  const duration = (endSmp - startSmp) / sampleBuffer.sampleRate;
+  function animate() {
+    const t = (getCtx().currentTime - startTime) / duration;
+    if (t > 1) { el.style.display = 'none'; return; }
+    const smp = startSmp + t * (endSmp - startSmp);
+    el.style.left = smpToX(smp) + 'px';
+    playheadAnim = requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+// ── Build pad grid ──
+function buildPads() {
+  const grid = document.getElementById('pad-grid');
+  grid.innerHTML = '';
+  const sorted = getSortedSliceSamplePositions();
+
+  pads.forEach((pad, i) => {
+    const el = document.createElement('div');
+    el.className = 'pad' + (pad.sliceIdx < 0 ? ' empty' : '') + (i === activePad ? ' active-pad' : '');
+    el.dataset.idx = i;
+    el.style.borderColor = i === activePad ? pad.color : '';
+
+    // Mini waveform
+    const mini = document.createElement('canvas');
+    mini.className = 'pad-mini-wave';
+    mini.width = 60; mini.height = 24;
+    if (samplePCM && pad.sliceIdx >= 0 && pad.sliceIdx < sorted.length) {
+      drawMiniWave(mini, sorted[pad.sliceIdx], pad.sliceIdx + 1 < sorted.length ? sorted[pad.sliceIdx+1] : samplePCM.length, pad.color);
+    }
+    el.appendChild(mini);
+
+    // Num + key label
+    const num = document.createElement('div');
+    num.className = 'pad-num';
+    num.textContent = (i + 1).toString().padStart(2, '0');
+    num.style.color = pad.sliceIdx >= 0 ? pad.color : '';
+    el.appendChild(num);
+
+    const key = document.createElement('div');
+    key.className = 'pad-key';
+    key.textContent = KB_ALL[i] ? KB_ALL[i].toUpperCase() : '';
+    el.appendChild(key);
+
+    // Flags
+    const flags = document.createElement('div');
+    flags.className = 'pad-flags';
+    if (pad.reverse) { const f = document.createElement('div'); f.className = 'pad-flag on'; f.textContent = '◀'; flags.appendChild(f); }
+    if (pad.loop)    { const f = document.createElement('div'); f.className = 'pad-flag on'; f.textContent = '↻'; flags.appendChild(f); }
+    el.appendChild(flags);
+
+    el.addEventListener('mousedown', e => { e.preventDefault(); getCtx(); selectPad(i); playPad(i); });
+    el.addEventListener('mouseup', () => { if (!pads[i].loop) stopPad(i); });
+    grid.appendChild(el);
+  });
+}
+
+function drawMiniWave(canvas, startSmp, endSmp, color) {
+  if (!samplePCM) return;
+  const c = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  c.clearRect(0,0,W,H);
+  const len = endSmp - startSmp;
+  const step = len / W;
+  const mid = H / 2;
+  for (let px = 0; px < W; px++) {
+    let peak = 0;
+    const i0 = Math.floor(startSmp + px * step);
+    const i1 = Math.floor(startSmp + (px+1) * step);
+    for (let i = i0; i < i1 && i < samplePCM.length; i++) {
+      if (Math.abs(samplePCM[i]) > peak) peak = Math.abs(samplePCM[i]);
+    }
+    const h = peak * mid * 0.9;
+    c.fillStyle = color + 'aa';
+    c.fillRect(px, mid - h, 1, h * 2);
+  }
+}
+
+function selectPad(idx) {
+  activePad = idx;
+  document.getElementById('st-pad').textContent = idx + 1;
+  loadPadToEditor(idx);
+  buildPads();
+  drawWaveform(); drawSlices();
+}
+
+// ── Slice editor ──
+function loadPadToEditor(idx) {
+  const pad = pads[idx];
+  document.getElementById('slice-editor-title').textContent = `SLICE EDITOR — PAD ${idx + 1}`;
+
+  setKnob('k-att',   pad.att);   setKnob('k-dec',   pad.dec);
+  setKnob('k-sus',   pad.sus);   setKnob('k-rel',   pad.rel);
+  setKnob('k-pitch', pad.pitch); setKnob('k-fine',  pad.fine);
+  setKnob('k-gain',  pad.gain);  setKnob('k-note',  pad.note);
+
+  document.getElementById('tog-loop').classList.toggle('on', pad.loop);
+  document.getElementById('tog-oneshot').classList.toggle('on', pad.oneshot);
+  document.getElementById('tog-reverse').classList.toggle('on', pad.reverse);
+
+  updateNoteDisplay();
+}
+
+function setKnob(id, val) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  c.dataset.val = val;
+  drawKnob(c);
+  const vid = 'v-' + id.replace('k-','');
+  const el = document.getElementById(vid);
+  if (el) el.textContent = parseFloat(val).toFixed(2);
+}
+
+// ── Knob system ──
+function drawKnob(canvas) {
+  const W = canvas.width, H = canvas.height;
+  const c = canvas.getContext('2d');
+  c.clearRect(0,0,W,H);
+  const min = parseFloat(canvas.dataset.min), max = parseFloat(canvas.dataset.max), val = parseFloat(canvas.dataset.val);
+  const color = canvas.dataset.color || '#39ff8a';
+  const t = (val - min) / (max - min);
+  const cx = W/2, cy = H/2, r = Math.min(W,H)/2 - 3;
+  const sA = Math.PI*0.75, eA = Math.PI*2.25, curA = sA + t*(eA-sA);
+
+  c.beginPath(); c.arc(cx,cy,r-2,sA,eA);
+  c.strokeStyle='#1e1e26'; c.lineWidth=3; c.lineCap='round'; c.stroke();
+
+  c.beginPath(); c.arc(cx,cy,r-2,sA,curA);
+  c.strokeStyle=color; c.lineWidth=3; c.lineCap='round';
+  c.shadowColor=color; c.shadowBlur=5; c.stroke(); c.shadowBlur=0;
+
+  const bg = c.createRadialGradient(cx,cy,1,cx,cy,r-6);
+  bg.addColorStop(0,'#22222a'); bg.addColorStop(1,'#14141c');
+  c.beginPath(); c.arc(cx,cy,r-6,0,Math.PI*2);
+  c.fillStyle=bg; c.fill();
+
+  c.beginPath();
+  c.moveTo(cx+(r-10)*Math.cos(curA)*0.2, cy+(r-10)*Math.sin(curA)*0.2);
+  c.lineTo(cx+(r-5)*Math.cos(curA), cy+(r-5)*Math.sin(curA));
+  c.strokeStyle=color; c.lineWidth=1.5; c.stroke();
+}
+
+function setupKnobs() {
+  document.querySelectorAll('canvas.knob').forEach(canvas => {
+    drawKnob(canvas);
+    let sy, sv2;
+    canvas.addEventListener('mousedown', e => {
+      sy = e.clientY; sv2 = parseFloat(canvas.dataset.val); e.preventDefault();
+      const move = e2 => {
+        const min = parseFloat(canvas.dataset.min), max = parseFloat(canvas.dataset.max);
+        const sens = e2.shiftKey ? 700 : 160;
+        canvas.dataset.val = Math.max(min, Math.min(max, sv2 + (sy - e2.clientY) * (max-min)/sens));
+        drawKnob(canvas); onKnobChange(canvas.id, parseFloat(canvas.dataset.val));
+      };
+      const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    });
+  });
+}
+
+const NOTE_NAMES_ALL = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function updateNoteDisplay() {
+  const n = Math.round(parseFloat(document.getElementById('k-note').dataset.val));
+  const name = NOTE_NAMES_ALL[n % 12] + (Math.floor(n/12)-1);
+  document.getElementById('v-note').textContent = name;
+}
+
+function onKnobChange(id, val) {
+  const pad = pads[activePad];
+  const fmtV = v => parseFloat(v).toFixed(2);
+  const sv = (eid, v) => { const e = document.getElementById(eid); if(e) e.textContent = v; };
+  ({
+    'k-att':   () => { pad.att = val;   sv('v-att',   fmtV(val)); },
+    'k-dec':   () => { pad.dec = val;   sv('v-dec',   fmtV(val)); },
+    'k-sus':   () => { pad.sus = val;   sv('v-sus',   fmtV(val)); },
+    'k-rel':   () => { pad.rel = val;   sv('v-rel',   fmtV(val)); },
+    'k-pitch': () => { pad.pitch = Math.round(val); sv('v-pitch', Math.round(val)); },
+    'k-fine':  () => { pad.fine = val;  sv('v-fine',  Math.round(val)); },
+    'k-gain':  () => { pad.gain = val;  sv('v-gain',  fmtV(val)); },
+    'k-note':  () => { pad.note = Math.round(val); updateNoteDisplay(); },
+    'k-swing': () => { swing = val; sv('v-swing', fmtV(val)); },
+  }[id] || (() => {}))();
+}
+
+// ── Toggle controls ──
+document.getElementById('tog-loop').addEventListener('click', () => {
+  pads[activePad].loop = !pads[activePad].loop;
+  if (pads[activePad].loop) pads[activePad].oneshot = false;
+  loadPadToEditor(activePad); buildPads();
+});
+document.getElementById('tog-oneshot').addEventListener('click', () => {
+  pads[activePad].oneshot = !pads[activePad].oneshot;
+  if (pads[activePad].oneshot) pads[activePad].loop = false;
+  loadPadToEditor(activePad); buildPads();
+});
+document.getElementById('tog-reverse').addEventListener('click', () => {
+  pads[activePad].reverse = !pads[activePad].reverse;
+  loadPadToEditor(activePad); buildPads();
+});
+
+// ── Slice tool buttons ──
+document.getElementById('tool-slice').addEventListener('click', () => { tool='slice'; document.getElementById('tool-slice').classList.add('active'); document.getElementById('tool-move').classList.remove('active'); });
+document.getElementById('tool-move').addEventListener('click',  () => { tool='move';  document.getElementById('tool-move').classList.add('active');  document.getElementById('tool-slice').classList.remove('active'); });
+document.getElementById('btn-auto-chop').addEventListener('click', autoChopTransients);
+document.getElementById('btn-equal-chop').addEventListener('click', equalChop);
+document.getElementById('btn-clear-slices').addEventListener('click', () => { sliceMarkers=[]; assignSlicesToPads(); drawWaveform(); drawSlices(); buildPads(); });
+document.getElementById('btn-zoom-in').addEventListener('click',  () => { const mid=(zoomStart+zoomEnd)/2, half=(zoomEnd-zoomStart)/4; zoomStart=Math.max(0,mid-half); zoomEnd=Math.min(1,mid+half); drawWaveform(); drawSlices(); drawZoomBar(); });
+document.getElementById('btn-zoom-out').addEventListener('click', () => { const mid=(zoomStart+zoomEnd)/2, half=(zoomEnd-zoomStart); zoomStart=Math.max(0,mid-half); zoomEnd=Math.min(1,mid+half); drawWaveform(); drawSlices(); drawZoomBar(); });
+
+// ── Zoom bar ──
+function drawZoomBar() {
+  const bar = document.getElementById('zoom-bar');
+  const handle = document.getElementById('zoom-handle');
+  const W = bar.clientWidth;
+  handle.style.left  = (zoomStart * W) + 'px';
+  handle.style.width = ((zoomEnd - zoomStart) * W) + 'px';
+}
+
+// Zoom bar drag
+(function() {
+  const bar = document.getElementById('zoom-bar');
+  const handle = document.getElementById('zoom-handle');
+  let dragging = false, startX, startZS, startZE, dragType;
+  handle.addEventListener('mousedown', e => {
+    dragging = true; startX = e.clientX; startZS = zoomStart; startZE = zoomEnd;
+    dragType = e.offsetX < 8 ? 'left' : e.offsetX > handle.offsetWidth - 8 ? 'right' : 'move';
+    e.stopPropagation();
+  });
+  bar.addEventListener('mousedown', e => {
+    if (e.target === bar) {
+      const t = e.offsetX / bar.clientWidth;
+      const half = (zoomEnd - zoomStart) / 2;
+      zoomStart = Math.max(0, t - half); zoomEnd = Math.min(1, t + half);
+      drawWaveform(); drawSlices(); drawZoomBar();
+    }
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = (e.clientX - startX) / bar.clientWidth;
+    if (dragType === 'move') {
+      const span = startZE - startZS;
+      zoomStart = Math.max(0, Math.min(1-span, startZS + dx));
+      zoomEnd = zoomStart + span;
+    } else if (dragType === 'left') {
+      zoomStart = Math.max(0, Math.min(zoomEnd - 0.05, startZS + dx));
+    } else {
+      zoomEnd = Math.min(1, Math.max(zoomStart + 0.05, startZE + dx));
+    }
+    drawWaveform(); drawSlices(); drawZoomBar();
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+})();
+
+// Mouse wheel zoom on waveform
+waveCanvas.addEventListener('wheel', e => {
+  if (!samplePCM) return;
+  e.preventDefault();
+  const pivot = xToNorm(e.offsetX);
+  const span = zoomEnd - zoomStart;
+  const factor = e.deltaY > 0 ? 1.15 : 0.87;
+  const ns = Math.max(0, pivot - (pivot - zoomStart) * factor);
+  const ne = Math.min(1, pivot + (zoomEnd - pivot) * factor);
+  if (ne - ns > 0.01) { zoomStart = ns; zoomEnd = ne; drawWaveform(); drawSlices(); drawZoomBar(); }
+}, { passive: false });
+
+// ── Chop Sequencer ──
+function buildSeqRows() {
+  const el = document.getElementById('seq-rows');
+  el.innerHTML = '';
+  const usedPads = pads.filter((p, i) => p.sliceIdx >= 0);
+  if (usedPads.length === 0) return;
+
+  // Only show pads that have slices
+  pads.forEach((pad, pi) => {
+    if (pad.sliceIdx < 0) return;
+    // Ensure pattern length
+    while (pad.seqPattern.length < seqSteps) pad.seqPattern.push(false);
+    pad.seqPattern.length = seqSteps;
+
+    const row = document.createElement('div');
+    row.className = 'seq-row';
+    const lbl = document.createElement('div');
+    lbl.className = 'seq-pad-lbl';
+    lbl.textContent = (pi + 1).toString().padStart(2,'0');
+    lbl.style.color = pad.color;
+    row.appendChild(lbl);
+
+    for (let s = 0; s < seqSteps; s++) {
+      const step = document.createElement('div');
+      step.className = 'seq-step' + (pad.seqPattern[s] ? ' on' : '') + (s % 4 === 0 ? ' beat0' : '');
+      step.dataset.pad = pi; step.dataset.step = s;
+      if (pad.seqPattern[s]) step.style.background = pad.color + '33';
+
+      // Velocity bar
+      const bar = document.createElement('div');
+      bar.className = 'seq-step-bar';
+      bar.style.height = pad.seqPattern[s] ? '60%' : '0%';
+      bar.style.background = pad.color;
+      step.appendChild(bar);
+
+      step.addEventListener('mousedown', e => {
+        e.preventDefault();
+        pad.seqPattern[s] = !pad.seqPattern[s];
+        step.classList.toggle('on', pad.seqPattern[s]);
+        step.style.background = pad.seqPattern[s] ? pad.color + '33' : '';
+        bar.style.height = pad.seqPattern[s] ? '60%' : '0%';
+      });
+      row.appendChild(step);
+    }
+    el.appendChild(row);
+  });
+}
+
+// ── Sequencer playback ──
+let nextStepTime = 0;
+
+function stepDuration() { return 60 / bpm / 4; }
+
+function seqScheduler() {
+  const c = getCtx();
+  while (nextStepTime < c.currentTime + 0.1) {
+    const step = seqStep;
+    const swingOffset = (step % 2 === 1) ? swing * stepDuration() : 0;
+    pads.forEach((pad, pi) => {
+      if (pad.seqPattern[step]) {
+        // Schedule via setTimeout approximation (Web Audio would need proper lookahead)
+        const delay = Math.max(0, (nextStepTime + swingOffset - c.currentTime) * 1000);
+        setTimeout(() => playPad(pi, 0.8 + Math.random() * 0.2), delay);
+      }
+    });
+
+    // Highlight current step
+    highlightSeqStep(step);
+    document.getElementById('st-step').textContent = step + 1;
+
+    seqStep = (seqStep + 1) % seqSteps;
+    nextStepTime += stepDuration();
+  }
+}
+
+let prevHighlight = -1;
+function highlightSeqStep(step) {
+  if (prevHighlight >= 0) {
+    document.querySelectorAll(`.seq-step[data-step="${prevHighlight}"]`).forEach(el => el.classList.remove('playing'));
+  }
+  document.querySelectorAll(`.seq-step[data-step="${step}"]`).forEach(el => el.classList.add('playing'));
+  prevHighlight = step;
+}
+
+function startSeq() {
+  if (!sampleBuffer) return;
+  getCtx();
+  seqPlaying = true;
+  seqStep = 0;
+  nextStepTime = getCtx().currentTime;
+  seqTimer = setInterval(seqScheduler, 25);
+  document.getElementById('btn-play-seq').classList.add('active');
+}
+function stopSeq() {
+  seqPlaying = false;
+  clearInterval(seqTimer);
+  document.querySelectorAll('.seq-step.playing').forEach(el => el.classList.remove('playing'));
+  document.getElementById('st-step').textContent = '—';
+  document.getElementById('btn-play-seq').classList.remove('active');
+}
+
+document.getElementById('btn-play-seq').addEventListener('click', () => { if(seqPlaying) stopSeq(); else startSeq(); });
+document.getElementById('btn-stop-seq').addEventListener('click', stopSeq);
+
+// ── Seq steps toggle ──
+document.getElementById('btn-seq-steps-16').addEventListener('click', () => {
+  seqSteps = 16; pads.forEach(p => { p.seqPattern.length = 16; while(p.seqPattern.length < 16) p.seqPattern.push(false); });
+  document.getElementById('btn-seq-steps-16').classList.add('active');
+  document.getElementById('btn-seq-steps-32').classList.remove('active');
+  buildSeqRows();
+});
+document.getElementById('btn-seq-steps-32').addEventListener('click', () => {
+  seqSteps = 32; pads.forEach(p => { while(p.seqPattern.length < 32) p.seqPattern.push(false); });
+  document.getElementById('btn-seq-steps-32').classList.add('active');
+  document.getElementById('btn-seq-steps-16').classList.remove('active');
+  buildSeqRows();
+});
+
+// ── Randomizer ──
+document.getElementById('btn-randomize').addEventListener('click', () => {
+  const used = pads.filter(p => p.sliceIdx >= 0);
+  if (!used.length) return;
+  pads.forEach(pad => {
+    if (pad.sliceIdx < 0) return;
+    pad.seqPattern = pad.seqPattern.map((_, i) => Math.random() < (i % 4 === 0 ? 0.55 : 0.2));
+  });
+  buildSeqRows();
+});
+document.getElementById('btn-clear-seq').addEventListener('click', () => {
+  pads.forEach(p => p.seqPattern.fill(false)); buildSeqRows();
+});
+
+// ── BPM drag ──
+(function() {
+  const el = document.getElementById('bpm-val');
+  let sy, sb;
+  el.addEventListener('mousedown', e => { sy = e.clientY; sb = bpm; e.preventDefault();
+    const move = e2 => { bpm = Math.max(40, Math.min(300, Math.round(sb + (sy - e2.clientY) * 0.5))); el.textContent = bpm; };
+    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+  });
+  el.addEventListener('dblclick', () => { const v = prompt('BPM:', bpm); if(v && !isNaN(v)) { bpm = Math.max(40, Math.min(300, parseInt(v))); el.textContent = bpm; } });
+})();
+
+// ── Keyboard ──
+const heldKeys = new Set();
+document.addEventListener('keydown', e => {
+  if (e.repeat || e.target.tagName === 'INPUT') return;
+  const key = e.key.toLowerCase();
+  if (key === ' ') { e.preventDefault(); if(seqPlaying) stopSeq(); else startSeq(); return; }
+  const idx = KB_ALL.indexOf(key);
+  if (idx >= 0 && idx < NUM_PADS && !heldKeys.has(key)) {
+    heldKeys.add(key);
+    getCtx(); selectPad(idx); playPad(idx);
+  }
+});
+document.addEventListener('keyup', e => {
+  const key = e.key.toLowerCase();
+  heldKeys.delete(key);
+  const idx = KB_ALL.indexOf(key);
+  if (idx >= 0 && idx < NUM_PADS) stopPad(idx);
+});
+
+// ── KB Map button ──
+document.getElementById('btn-kb-map').addEventListener('click', () => {
+  kbMapMode = !kbMapMode;
+  document.getElementById('btn-kb-map').classList.toggle('active', kbMapMode);
+});
+
+// ── Resize observer ──
+const ro = new ResizeObserver(() => resizeCanvases());
+ro.observe(waveWrap);
+
+// ── Init ──
+function init() {
+  setupKnobs();
+  resizeCanvases();
+  buildPads();
+  buildSeqRows();
+  loadPadToEditor(0);
+
+  // Demo: load a simple test tone if no file (just shows UI)
+  drawZoomBar();
+}
+init();
+</script>
+</body>
+</html>
